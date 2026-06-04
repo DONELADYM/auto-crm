@@ -10,6 +10,7 @@ import {
   Settings,
   Briefcase,
   FileText,
+  SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/deals", label: "Deals", icon: Briefcase },
   { href: "/activities", label: "Actividades", icon: Activity },
   { href: "/forms", label: "Formularios", icon: FileText },
+  { href: "/configurar", label: "Personalizar", icon: SlidersHorizontal },
   { href: "/settings", label: "Configuracion", icon: Settings },
 ];
 
