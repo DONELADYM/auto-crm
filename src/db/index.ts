@@ -50,6 +50,7 @@ function initTables(db: Database.Database): void {
       temperature TEXT NOT NULL DEFAULT 'cold',
       score INTEGER NOT NULL DEFAULT 0,
       notes TEXT,
+      form_data TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`,
@@ -94,6 +95,16 @@ function initTables(db: Database.Database): void {
       db.exec(sql);
     } catch {
       // Table might already exist or DB is locked - safe to continue
+    }
+  }
+
+  // Migraciones para bases de datos existentes (agregar columnas nuevas)
+  const migrations = [`ALTER TABLE contacts ADD COLUMN form_data TEXT`];
+  for (const sql of migrations) {
+    try {
+      db.exec(sql);
+    } catch {
+      // La columna ya existe - seguro continuar
     }
   }
 }

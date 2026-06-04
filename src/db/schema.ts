@@ -12,6 +12,7 @@ export const contacts = sqliteTable("contacts", {
   temperature: text("temperature").notNull().default("cold"),
   score: integer("score").notNull().default(0),
   notes: text("notes"),
+  formData: text("form_data"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

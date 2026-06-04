@@ -86,6 +86,10 @@ export async function POST(request: NextRequest) {
       negocio: "company",
     };
 
+    // Capitaliza la primera letra
+    const capitalize = (s: string) =>
+      s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
     // Normaliza el nombre del campo (quita acentos, signos, espacios)
     const normalize = (s: string) =>
       s
@@ -96,21 +100,34 @@ export async function POST(request: NextRequest) {
         .trim()
         .replace(/\s+/g, "_");
 
-    // Guarda todas las respuestas del formulario para no perder nada
-    const extraAnswers: string[] = [];
+    // Detecta el tipo de pregunta para mostrar un icono adecuado en la tarjeta
+    const detectType = (label: string): string => {
+      const l = label.toLowerCase();
+      if (/(estado|ciudad|pais|país|ubicaci|donde|dónde|zona|region|región|direcci)/.test(l)) return "location";
+      if (/(edad|años|anos|grupo de edad|cumple)/.test(l)) return "age";
+      if (/(presupuesto|invertir|inversi|precio|costo|pagar|dinero|dolar|dólar|\$)/.test(l)) return "budget";
+      if (/(lograr|objetivo|meta|necesit|busca|interes|interés|quiere|deseas|gustaria|gustaría)/.test(l)) return "goal";
+      if (/(cuando|cuándo|fecha|tiempo|horario|disponib)/.test(l)) return "time";
+      if (/(web|sitio|pagina|página|url|http)/.test(l)) return "website";
+      if (/(trabajo|empleo|ocupaci|profesi|negocio|empresa)/.test(l)) return "work";
+      return "question";
+    };
+
+    // Estructura las respuestas del formulario (para mostrarlas como campos)
+    const formAnswers: Array<{ label: string; value: string; type: string }> = [];
 
     for (const field of leadData.field_data) {
       const rawName = field.name;
       const norm = normalize(rawName);
-      const value = field.values[0] ?? "";
+      const value = field.values.join(", ");
       const mapped = fieldMap[norm];
       if (mapped) {
-        fields[mapped] = value;
+        fields[mapped] = field.values[0] ?? "";
       } else {
-        // Pregunta personalizada del formulario -> va a las notas
-        const label = rawName.replace(/_/g, " ").trim();
-        const cleanValue = value.replace(/_/g, " ").trim();
-        extraAnswers.push(`• ${label}: ${cleanValue}`);
+        // Pregunta personalizada del formulario -> dato estructurado
+        const label = capitalize(rawName.replace(/_/g, " ").trim());
+        const cleanValue = capitalize(value.replace(/_/g, " ").trim());
+        formAnswers.push({ label, value: cleanValue, type: detectType(label) });
       }
     }
 
@@ -129,14 +146,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Construir notas con TODA la info del formulario
-    const notesParts = ["Lead de Facebook Instant Form"];
-    if (extraAnswers.length > 0) {
-      notesParts.push("", "Respuestas del formulario:", ...extraAnswers);
-    }
-    notesParts.push("", `Lead ID: ${leadId}`);
-    const fullNotes = notesParts.join("\n");
-
     const now = new Date();
     const contact = db
       .insert(contacts)
@@ -148,7 +157,8 @@ export async function POST(request: NextRequest) {
         source: "facebook_lead",
         temperature: "warm",
         score: 50,
-        notes: fullNotes,
+        notes: `Lead de Facebook Instant Form · Lead ID: ${leadId}`,
+        formData: formAnswers.length > 0 ? JSON.stringify(formAnswers) : null,
         createdAt: now,
         updatedAt: now,
       })

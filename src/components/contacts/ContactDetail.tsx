@@ -23,6 +23,14 @@ import {
   MessageCircle,
   Copy,
   Check,
+  MapPin,
+  Target,
+  DollarSign,
+  CalendarClock,
+  Globe,
+  Briefcase,
+  HelpCircle,
+  Cake,
 } from "lucide-react";
 import { formatCurrency, formatDate, formatRelativeDate, cleanPhoneForWhatsApp } from "@/lib/constants";
 import { ACTIVITY_TYPE_CONFIG, SOURCE_LABELS } from "@/lib/constants";
@@ -37,6 +45,30 @@ const activityIcons: Record<string, typeof Phone> = {
   follow_up: Clock,
 };
 
+// Iconos por tipo de pregunta detectado en el formulario
+const formFieldIcons: Record<string, typeof Phone> = {
+  location: MapPin,
+  age: Cake,
+  budget: DollarSign,
+  goal: Target,
+  time: CalendarClock,
+  website: Globe,
+  work: Briefcase,
+  question: HelpCircle,
+};
+
+type FormAnswer = { label: string; value: string; type: string };
+
+function parseFormData(formData: string | null): FormAnswer[] {
+  if (!formData) return [];
+  try {
+    const parsed = JSON.parse(formData);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 interface ContactDetailClientProps {
   contact: {
     id: string;
@@ -48,6 +80,7 @@ interface ContactDetailClientProps {
     temperature: string;
     score: number;
     notes: string | null;
+    formData?: string | null;
     createdAt: number | Date;
   };
   deals: Array<{
@@ -235,9 +268,32 @@ export function ContactDetailClient({
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <span>Creado {formatDate(contact.createdAt)}</span>
             </div>
+            {(() => {
+              const answers = parseFormData(contact.formData ?? null);
+              if (answers.length === 0) return null;
+              return (
+                <div className="pt-3 border-t space-y-2.5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Respuestas del formulario
+                  </p>
+                  {answers.map((ans, i) => {
+                    const Icon = formFieldIcons[ans.type] || HelpCircle;
+                    return (
+                      <div key={i} className="flex items-start gap-2 text-sm">
+                        <Icon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground">{ans.label}</p>
+                          <p className="font-medium break-words">{ans.value}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
             {contact.notes && (
               <div className="pt-2 border-t">
-                <p className="text-sm text-muted-foreground whitespace-pre-line">{contact.notes}</p>
+                <p className="text-xs text-muted-foreground whitespace-pre-line">{contact.notes}</p>
               </div>
             )}
           </CardContent>
