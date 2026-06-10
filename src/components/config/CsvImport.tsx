@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, FileSpreadsheet, Check } from "lucide-react";
+import { DownloadTemplate } from "@/components/contacts/DownloadTemplate";
 import { toast } from "sonner";
 
 // Mapeo de columnas comunes (es/en) → campo estándar
@@ -107,11 +108,13 @@ export function CsvImport() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Sube un archivo <strong>Excel (.xlsx, .xls)</strong> o <strong>CSV</strong>.
-          Detecta automáticamente columnas como nombre, email, teléfono, empresa
-          (en español o inglés).
-        </p>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <p className="text-sm text-muted-foreground flex-1 min-w-[200px]">
+            Sube un archivo <strong>Excel (.xlsx, .xls)</strong> o <strong>CSV</strong>.
+            Detecta automáticamente columnas como nombre, email, teléfono, empresa.
+          </p>
+          <DownloadTemplate variant="secondary" />
+        </div>
 
         <label className="flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-6 cursor-pointer hover:bg-muted/50 transition-colors">
           <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />

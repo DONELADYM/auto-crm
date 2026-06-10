@@ -3,13 +3,16 @@
 import { useState, useEffect } from "react";
 import { ContactsTable } from "@/components/contacts/ContactsTable";
 import { ContactForm } from "@/components/contacts/ContactForm";
+import { CsvImport } from "@/components/config/CsvImport";
+import { DownloadTemplate } from "@/components/contacts/DownloadTemplate";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import type { Contact } from "@/types";
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadContacts = () => {
@@ -39,11 +42,28 @@ export default function ContactsPage() {
             Gestiona tus leads y prospectos
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)} className="cursor-pointer">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Contacto
-        </Button>
+        <div className="flex items-center gap-2">
+          <DownloadTemplate />
+          <Button variant="outline" size="sm" onClick={() => setShowImport((v) => !v)} className="cursor-pointer">
+            <Upload className="h-4 w-4 mr-1" />
+            Importar
+          </Button>
+          <Button onClick={() => setShowForm(true)} className="cursor-pointer">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Contacto
+          </Button>
+        </div>
       </div>
+
+      {showImport && (
+        <div className="space-y-2">
+          <CsvImport />
+          <p className="text-xs text-muted-foreground">
+            Descarga la plantilla, llénala en Excel y súbela aquí. Tras importar,
+            recarga la página para ver los contactos nuevos.
+          </p>
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">
