@@ -26,23 +26,58 @@ export async function GET() {
   }
 
   try {
-    // 1. Listar páginas del portafolio (con su token de página)
+    // 1. Listar páginas del portafolio
+    // Los tokens de Usuario del Sistema usan /me/accounts o la API de Business.
+    // Intentamos primero /me/accounts; si falla, usamos owned_pages del Business.
+    let pages: Array<{ id: string; name: string; access_token: string }> = [];
+
     const pagesRes = await fetch(
       `${GRAPH}/me/accounts?fields=name,id,access_token&limit=100&access_token=${token}`
     );
     const pagesData = (await pagesRes.json()) as {
       data?: Array<{ id: string; name: string; access_token: string }>;
-      error?: { message: string };
+      error?: { message: string; code?: number };
     };
 
-    if (pagesData.error) {
-      return NextResponse.json(
-        { error: `Error de Meta: ${pagesData.error.message}` },
-        { status: 502 }
+    if (!pagesData.error && pagesData.data) {
+      pages = pagesData.data;
+    } else {
+      // Fallback: buscar páginas via client_pages del System User
+      const clientRes = await fetch(
+        `${GRAPH}/me/client_pages?fields=name,id,access_token&limit=100&access_token=${token}`
       );
+      const clientData = (await clientRes.json()) as {
+        data?: Array<{ id: string; name: string; access_token: string }>;
+        error?: { message: string };
+      };
+
+      if (!clientData.error && clientData.data) {
+        pages = clientData.data;
+      } else {
+        // Segundo fallback: owned_pages
+        const ownedRes = await fetch(
+          `${GRAPH}/me/owned_pages?fields=name,id,access_token&limit=100&access_token=${token}`
+        );
+        const ownedData = (await ownedRes.json()) as {
+          data?: Array<{ id: string; name: string; access_token: string }>;
+          error?: { message: string };
+        };
+
+        if (ownedData.error) {
+          return NextResponse.json(
+            { error: `Error de Meta: ${ownedData.error.message}` },
+            { status: 502 }
+          );
+        }
+        pages = ownedData.data ?? [];
+      }
     }
 
-    const pages = pagesData.data ?? [];
+    // Para páginas sin access_token, usar el token del sistema directamente
+    pages = pages.map((p) => ({
+      ...p,
+      access_token: p.access_token || token,
+    }));
 
     // 2. Para cada página, traer sus formularios + preguntas (en paralelo)
     const formsPerPage = await Promise.all(
