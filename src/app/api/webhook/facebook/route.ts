@@ -38,6 +38,57 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Detectar si viene de LeadsBridge (envía datos directamente)
+    const isLeadsBridge =
+      body.email !== undefined ||
+      body.full_name !== undefined ||
+      body.nombre !== undefined ||
+      body.phone_number !== undefined ||
+      body.first_name !== undefined;
+
+    if (isLeadsBridge) {
+      const fieldMap: Record<string, string> = {
+        full_name: "name", nombre: "name", nombre_completo: "name",
+        first_name: "firstName", last_name: "lastName",
+        email: "email", correo: "email",
+        phone_number: "phone", phone: "phone", telefono: "phone", whatsapp: "phone",
+        company_name: "company", company: "company", empresa: "company",
+      };
+      const fields: Record<string, string> = {};
+      for (const [key, val] of Object.entries(body)) {
+        const mapped = fieldMap[key.toLowerCase()];
+        if (mapped && typeof val === "string") fields[mapped] = val;
+      }
+      if (!fields.name && (fields.firstName || fields.lastName)) {
+        fields.name = [fields.firstName, fields.lastName].filter(Boolean).join(" ").trim();
+      }
+      if (!fields.name) {
+        return NextResponse.json({ received: true }, { status: 200 });
+      }
+      const now = new Date();
+      const contact = db.insert(contacts).values({
+        name: fields.name, email: fields.email || null, phone: fields.phone || null,
+        company: fields.company || null, source: "facebook_lead", temperature: "warm",
+        score: 50, notes: "Lead de Facebook via LeadsBridge", createdAt: now, updatedAt: now,
+      }).returning().get();
+      db.insert(activities).values({
+        type: "note", description: "Lead recibido desde Facebook Lead Ads (LeadsBridge)",
+        contactId: contact.id, createdAt: now,
+      }).run();
+      const allStages = db.select().from(pipelineStages).orderBy(asc(pipelineStages.order)).all();
+      const def = db.select().from(pipelines).where(eq(pipelines.isDefault, true)).get();
+      const stages = def ? allStages.filter(s => s.pipelineId === def.id) : allStages;
+      const stage = stages.find(s => /prospecto/i.test(s.name)) || stages.find(s => !s.isWon && !s.isLost) || stages[0];
+      if (stage) {
+        db.insert(deals).values({
+          title: `Oportunidad - ${fields.name}`, value: 0, stageId: stage.id,
+          contactId: contact.id, probability: 20, notes: "Creado desde Facebook Lead Ads",
+          createdAt: now, updatedAt: now,
+        }).run();
+      }
+      return NextResponse.json({ success: true, contactId: contact.id }, { status: 201 });
+    }
+
     const entry = (body.entry as Array<Record<string, unknown>>)?.[0];
     const changes = (entry?.changes as Array<Record<string, unknown>>)?.[0];
     const value = changes?.value as Record<string, unknown>;
